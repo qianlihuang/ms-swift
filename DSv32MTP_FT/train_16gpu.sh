@@ -11,23 +11,32 @@ DATASET_PATH="${SCRIPT_DIR}/sft_10.jsonl"
 OUTPUT_DIR="/data/finetuned_layer61"
 
 # Parallelism (16 GPUs Required)
-# Configured for 2 nodes x 8 GPUs (Standard H200 setup)
-# or 1 node x 16 GPUs.
-# Total World Size must be 16.
-
-# Default to running on a single node with 16 GPUs if not specified? 
-# Usually H200 servers have 8. So this likely requires multi-node.
-# The user needs to run this script on each node with appropriate env vars
-# (NODE_RANK, MASTER_ADDR, etc.) or use a launcher.
-# Here we set the model parallelism parameters to consume 16 GPUs.
+# Configured for 2 nodes x 8 GPUs (Standard H200 setup) -> Total 16 GPUs
+# If using TP=16, you MUST have NVLink across all 16 GPUs (e.g. DGX GH200) or acceptable interconnect performance.
+# Standard H200 nodes usually have 8 GPUs. TP=16 might be slow across nodes without high-bandwidth (NVSwitch) cross-node.
+# IF 2 nodes, set NNODES=2, NODE_RANK=0 (on node 1) and NODE_RANK=1 (on node 2).
 
 TP=16
 PP=1
 EP=1
 CP=1
 
-# Check if 16 GPUs are available in total provided by environment
-# (This is just a script config; runtime check is done by torchrun/megatron)
+# Distributed Environment Variables
+# Defaults for a 2-node setup (since 8 GPUs per node is standard)
+# Run this script on EACH node with appropriate NODE_RANK
+export NNODES=${NNODES:-2}
+export NODE_RANK=${NODE_RANK:-0}
+export MASTER_ADDR=${MASTER_ADDR:-"127.0.0.1"}
+export MASTER_PORT=${MASTER_PORT:-29500}
+export NPROC_PER_NODE=${NPROC_PER_NODE:-8}
+
+# Construct GLOO/NCCL options if needed, but torchrun/megatron usually handles it via env vars.
+# We explicitly export them above.
+
+# Check if we should warn about TP=16 on multi-node without NVSwitch
+echo "Starting DeepSeek-V3.2 16-GPU Fine-tuning..."
+echo "Parallelism: TP=${TP}, PP=${PP}, EP=${EP}"
+echo "Distributed: Nodes=${NNODES}, Rank=${NODE_RANK}, Master=${MASTER_ADDR}:${MASTER_PORT}"
 
 # Training hyperparams
 MICRO_BATCH=1
@@ -41,7 +50,10 @@ SAVE_INTERVAL=500
 
 # FP8 Settings (Required: Layer 61 output as block quant fp8)
 FP8_FORMAT="e4m3"
+# 'blockwise' (per-block scaling) or 'tensorwise' (per-tensor scaling)
+# DeepSeek V3 typically uses fine-grained quantization.
 FP8_RECIPE="blockwise"
+
 FP8_ARGS=(
     --fp8_format "${FP8_FORMAT}"
     --fp8_recipe "${FP8_RECIPE}"
@@ -55,15 +67,7 @@ TRAINABLE_REGEX="model\.layers\.60\.|lm_head|model\.norm|model\.final_layernorm"
 
 # ===== Train (Megatron-SWIFT) =====
 # Using TP=16, PP=1 to split model across 16 GPUs
-# PP Stage 1: Layers 0-30 (Frozen)
-# PP Stage 2: Layers 31-60 (Frozen except Layer 60)
-
-echo "Starting DeepSeek-V3.2 16-GPU Fine-tuning..."
-echo "TP=${TP}, PP=${PP} => Total GPUs: $((TP*PP))"
-
-# Note: NPROC_PER_NODE should be set by the caller or 00_env.sh. 
-# If running single node 16 gpu: NPROC_PER_NODE=16
-# If running 2 nodes 8 gpu: NPROC_PER_NODE=8 (default in 00_env.sh)
+# PP Stage 1: Layers 0-60 (Full model in 1 stage, just split tensor-wise)
 
 megatron sft \
   --model "${MODEL_DIR}" \
