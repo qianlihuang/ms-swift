@@ -62,8 +62,8 @@ FP8_ARGS=(
     --exp_avg_sq_dtype fp8
 )
 
-# Trainable regex: Layer 60 (last layer) + Heads + Norms
-TRAINABLE_REGEX="model\.layers\.60\.|lm_head|model\.norm|model\.final_layernorm"
+# Trainable regex: Layer 61 (last layer) + Heads + Norms
+TRAINABLE_REGEX="model\.layers\.61\.|lm_head|model\.norm|model\.final_layernorm"
 
 # ===== Train (Megatron-SWIFT) =====
 # Using TP=16, PP=1 to split model across 16 GPUs
