@@ -795,6 +795,7 @@ class MegatronArguments(ExtraMegatronArguments):
         extra_args['is_multimodal'] = self.model_meta.is_multimodal
         # model_type may be overridden by megatron
         extra_args['hf_model_type'] = self.model_type
+        extra_args['llm_model_type'] = self.model_type  # Added for megatron model meta lookup
         megatron_extra_kwargs = args_dict.pop('megatron_extra_kwargs')
         args_dict.update(megatron_extra_kwargs)
         for k, value in args_dict.items():

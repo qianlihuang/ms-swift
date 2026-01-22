@@ -73,10 +73,19 @@ def model_provider(pre_process=True,
     Returns:
         Union[GPTModel, megatron.legacy.model.GPTModel]: The returned model
     """
-    from .register import get_megatron_model_meta
+    from .register import get_megatron_model_meta, MEGATRON_MODEL_MAPPING, _MODEL_META_MAPPING
+    # Ensure all megatron model definitions are imported
+    from . import gpts
+    
     args = get_args()
     use_te = args.transformer_impl == 'transformer_engine'
-    megatron_model_meta = get_megatron_model_meta(args.hf_model_type)
+    # Use llm_model_type (swift model_type) first, fallback to hf_model_type (HF config model_type)
+    model_type_for_meta = getattr(args, 'llm_model_type', None) or args.hf_model_type
+    print_rank_0(f'[DEBUG] model_type_for_meta={model_type_for_meta}, llm_model_type={getattr(args, "llm_model_type", None)}, hf_model_type={args.hf_model_type}')
+    print_rank_0(f'[DEBUG] MEGATRON_MODEL_MAPPING keys: {list(MEGATRON_MODEL_MAPPING.keys())}')
+    print_rank_0(f'[DEBUG] _MODEL_META_MAPPING: {_MODEL_META_MAPPING}')
+    megatron_model_meta = get_megatron_model_meta(model_type_for_meta)
+    print_rank_0(f'[DEBUG] megatron_model_meta={megatron_model_meta}')
 
     if args.record_memory_history:
         torch.cuda.memory._record_memory_history(

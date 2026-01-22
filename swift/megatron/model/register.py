@@ -40,8 +40,10 @@ class MegatronModelMeta:
 def register_megatron_model(megatron_model_meta: MegatronModelMeta, *, exist_ok: bool = False):
     megatron_model_type = megatron_model_meta.megatron_model_type
     for model_type in megatron_model_meta.model_types:
-        model_meta = MODEL_MAPPING[model_type]
-        model_meta.support_megatron = True
+        # Skip string types that are not in MODEL_MAPPING (used for HF config model_type compatibility)
+        if model_type in MODEL_MAPPING:
+            model_meta = MODEL_MAPPING[model_type]
+            model_meta.support_megatron = True
     if not exist_ok and megatron_model_type in MEGATRON_MODEL_MAPPING:
         raise ValueError(f'The `{megatron_model_type}` has already been registered in the MODEL_MAPPING.')
     MEGATRON_MODEL_MAPPING[megatron_model_type] = megatron_model_meta

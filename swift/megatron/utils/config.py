@@ -118,6 +118,8 @@ def convert_hf_config(config) -> Dict[str, Any]:
             'deepseek',
             'deepseek_v2',
             'deepseek_v3',
+            'deepseek_v3_2',  # Added for DeepSeek-V3.2 support (ms-swift model_type)
+            'deepseek_v32',   # Added for DeepSeek-V3.2 support (HF config model_type)
             'dots1',
     } or hf_model_type == 'kimi_vl':
         if llm_model_type != 'deepseek':

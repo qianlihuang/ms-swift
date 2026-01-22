@@ -21,6 +21,8 @@ register_megatron_model(
             ModelType.deepseek,
             ModelType.deepseek_v2,
             ModelType.deepseek_v3,
+            ModelType.deepseek_v3_2,  # Added for DeepSeek-V3.2 support (ms-swift model_type)
+            'deepseek_v32',  # Added for DeepSeek-V3.2 support (HF config model_type)
             ModelType.dots1,
             ModelType.ernie4_5,
             ModelType.ernie4_5_moe,

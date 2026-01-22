@@ -1,0 +1,89 @@
+#!/usr/bin/env bash
+# ============================================================================
+# DeepSeek-V3.2 MTP Last Layer Fine-tuning
+# 
+# 使用 PP=8 pipeline parallel，将61层分到8个GPU
+# 每个GPU处理约8层
+# ============================================================================
+set -euo pipefail
+
+# Load environment
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+source "${SCRIPT_DIR}/00_env.sh"
+
+# ===== Configuration =====
+MODEL_DIR="/data/models/DeepSeek-V3.2"
+DATASET_PATH="/workspace/ms-swift/DSv32MTP_FT/sft_10.jsonl"
+OUTPUT_DIR="/data/finetuned_layer60_test_pp8"
+
+# Parallelism: 8x H200, PP=8
+# 61 layers / 8 GPUs = ~8 layers per GPU
+NPROC_PER_NODE=8
+CUDA_VISIBLE_DEVICES=0,1,2,3,4,5,6,7
+TP=1
+PP=8
+CP=1
+EP=1
+
+# Training hyperparams
+MICRO_BATCH=1
+GLOBAL_BATCH=8
+EPOCHS=1
+LR=2e-5
+MIN_LR=2e-6
+MAX_LENGTH=256
+
+# 只训练最后一层 (在最后一个PP stage)
+TRAINABLE_REGEX="model\.layers\.60\.(self_attn|input_layernorm|post_attention_layernorm|mlp\.gate|mlp\.shared_experts)|lm_head|model\.norm"
+
+# ===== Check =====
+echo "============================================"
+echo "DeepSeek-V3.2 MTP Fine-tuning (PP=8)"
+echo "============================================"
+echo "Model: ${MODEL_DIR}"
+echo "Dataset: ${DATASET_PATH}"
+echo "Output: ${OUTPUT_DIR}"
+echo "============================================"
+
+if [[ ! -f "${DATASET_PATH}" ]]; then
+    echo "[ERROR] Dataset not found: ${DATASET_PATH}"
+    exit 1
+fi
+
+# ===== Train =====
+PYTORCH_CUDA_ALLOC_CONF=expandable_segments:True \
+NPROC_PER_NODE=${NPROC_PER_NODE} \
+CUDA_VISIBLE_DEVICES=${CUDA_VISIBLE_DEVICES} \
+megatron sft \
+    --model "${MODEL_DIR}" \
+    --model_type deepseek_v3_2 \
+    --dataset "${DATASET_PATH}" \
+    --train_type full \
+    --freeze_parameters_ratio 1 \
+    --trainable_parameters_regex "${TRAINABLE_REGEX}" \
+    --tensor_model_parallel_size ${TP} \
+    --pipeline_model_parallel_size ${PP} \
+    --context_parallel_size ${CP} \
+    --expert_model_parallel_size ${EP} \
+    --moe_grouped_gemm false \
+    --moe_permute_fusion false \
+    --moe_shared_expert_overlap false \
+    --moe_aux_loss_coeff 0 \
+    --micro_batch_size ${MICRO_BATCH} \
+    --global_batch_size ${GLOBAL_BATCH} \
+    --recompute_granularity full \
+    --recompute_method block \
+    --max_epochs ${EPOCHS} \
+    --lr ${LR} \
+    --lr_warmup_fraction 0.1 \
+    --min_lr ${MIN_LR} \
+    --save "${OUTPUT_DIR}" \
+    --save_interval 50 \
+    --max_length ${MAX_LENGTH} \
+    --num_workers 4 \
+    --dataset_num_proc 4 \
+    --no_save_optim true \
+    --no_save_rng true
+
+echo ""
+echo "Training completed! Output: ${OUTPUT_DIR}"
