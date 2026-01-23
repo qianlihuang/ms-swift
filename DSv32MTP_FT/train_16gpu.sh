@@ -3,6 +3,7 @@ set -euo pipefail
 
 # Load environment
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+source "${SCRIPT_DIR}/00_env.sh"
 
 # ===== User-configurable =====
 MODEL_DIR="/data/models/DeepSeek-V3.2"
@@ -62,7 +63,7 @@ FP8_ARGS=(
 )
 
 # Trainable regex: Layer 61 (last layer) + Heads + Norms
-TRAINABLE_REGEX="model\.layers\.61\.|lm_head|model\.norm|model\.final_layernorm"
+TRAINABLE_REGEX="model\.layers\.61\.|lm_head|model\.norm"
 
 # ===== Train (Megatron-SWIFT) =====
 # Using TP=16, PP=1 to split model across 16 GPUs
@@ -105,4 +106,5 @@ megatron sft \
   --no_save_rng true \
   --sequence_parallel true \
   --attention_backend flash \
+  --mtp_num_layers 1 \
   "${FP8_ARGS[@]}"
