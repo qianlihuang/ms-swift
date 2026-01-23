@@ -1,0 +1,8 @@
+# 节点0: 
+```
+GLOO_SOCKET_IFNAME=bond0.2007 NCCL_SOCKET_IFNAME=bond0.2007 NNODES=2 NODE_RANK=0 MASTER_ADDR=xingqiao-058 bash train_16gpu.sh
+```
+# 节点1:
+``` 
+GLOO_SOCKET_IFNAME=bond0.2007 NCCL_SOCKET_IFNAME=bond0.2007 NNODES=2 NODE_RANK=1 MASTER_ADDR=xingqiao-058 bash train_16gpu.sh
+```
