@@ -3,7 +3,6 @@ set -euo pipefail
 
 # Load environment
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-source "${SCRIPT_DIR}/00_env.sh"
 
 # ===== User-configurable =====
 MODEL_DIR="/data/models/DeepSeek-V3.2"
