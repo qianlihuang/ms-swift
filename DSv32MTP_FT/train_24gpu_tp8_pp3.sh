@@ -21,6 +21,7 @@ CP=1
 
 # Distributed Environment Variables
 # Defaults for a 3-node setup
+export PYTORCH_CUDA_ALLOC_CONF=expandable_segments:True
 export NNODES=${NNODES:-3}
 export NODE_RANK=${NODE_RANK:-0}
 export MASTER_ADDR=${MASTER_ADDR:-"127.0.0.1"}
